@@ -1,0 +1,164 @@
+﻿@page "/productos"
+@rendermode InteractiveServer
+
+<h3>Productos</h3>
+
+<EditForm Model="_producto" OnValidSubmit="@(editando ? Actualizar : Guardar)">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label>Inventario:</label>
+        <input type="number" @bind="_producto.Inventario" disabled="@editando" />
+        <ValidationMessage For="@(() => _producto.Inventario)" />
+        @if (errorInventario)
+        {
+            <div class="text-danger">El número de inventario ya está registrado.</div>
+        }
+    </div>
+
+    <div class="mb-3">
+        <label>Nombre:</label>
+        <input type="text" @bind="_producto.Nombre" />
+        <ValidationMessage For="@(() => _producto.Nombre)" />
+    </div>
+
+    <div class="mb-3">
+        <label>Departamento:</label>
+        <div>
+            <label><input type="radio" value="op1" /> Frutas</label>
+        </div>
+        <div>
+            <label><input type="radio" value="op2" /> Verduras</label>
+        </div>
+        <div>
+            <label><input type="radio" value="op3" /> Lácteos</label>
+        </div>
+        <ValidationMessage For="@(() => _producto.Departamento)" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">@((editando) ? "Actualizar" : "Guardar")</button>
+    @if (editando)
+    {
+        <button type="button" class="btn btn-secondary" @onclick="CancelarEdicion">Cancelar</button>
+    }
+</EditForm>
+
+<div class="mb-3">
+    <button type="button" class="btn btn-info" @onclick="MostrarExistencias">Existencias</button>
+    <button type="button" class="btn btn-secondary" @onclick="MostrarListado">Listado</button>
+</div>
+
+<h4>@(mostrandoExistencias ? "Concentrado de Existencias" : "Lista de productos")</h4>
+
+@if (_produlist.Count > 0 && !mostrandoExistencias)
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Inventario</th>
+                <th>Departamento</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var produ in _produlist)
+            {
+                <tr>
+                    <td>@produ.Nombre</td>
+                    <td>@produ.Inventario</td>
+                    <td>@produ.Departamento</td>
+                    <td>
+                        <button class="btn btn-warning" @onclick="() => EditarProducto(produ)">Editar</button>
+                        <button class="btn btn-danger" @onclick="() => EliminarProducto(produ)">Eliminar</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (mostrandoExistencias)
+{
+    <ul>
+        @foreach (var departamento in _existencias)
+        {
+            <li>@departamento.Key: @departamento.Value existencias</li>
+        }
+    </ul>
+}
+
+@code {
+    private Productos _producto = new();
+    private List<Productos> _produlist = new();
+    private Dictionary<string, int> _existencias = new();
+    private bool editando = false;
+    private bool errorInventario = false;
+    private bool mostrandoExistencias = false;
+    private string op1 = "Frutas";
+    private string op2 = "Verduras";
+    private string op3 = "Lacteos";
+
+    private void Guardar()
+    {
+        if (_produlist.Any(p => p.Inventario == _producto.Inventario))
+        {
+            errorInventario = true;
+            return;
+        }
+
+        _produlist.Add(new Productos
+        {
+            Nombre = _producto.Nombre,
+            Inventario = _producto.Inventario,
+            Departamento = _producto.Departamento
+        });
+
+        errorInventario = false;
+        _producto = new Productos();
+    }
+
+    private void EliminarProducto(Productos produ)
+    {
+        _produlist.Remove(produ);
+    }
+
+    private void EditarProducto(Productos produ)
+    {
+        _producto = new Productos
+        {
+            Nombre = produ.Nombre,
+            Inventario = produ.Inventario,
+            Departamento = produ.Departamento
+        };
+        editando = true;
+    }
+
+    private void Actualizar()
+    {
+        var productoOriginal = _produlist.First(p => p.Inventario == _producto.Inventario);
+        productoOriginal.Nombre = _producto.Nombre;
+        productoOriginal.Departamento = _producto.Departamento;
+
+        _producto = new Productos();
+        editando = false;
+    }
+
+    private void CancelarEdicion()
+    {
+        _producto = new Productos();
+        editando = false;
+    }
+
+    private void MostrarExistencias()
+    {
+        mostrandoExistencias = true;
+        _existencias = _produlist.GroupBy(p => p.Departamento)
+                                 .ToDictionary(g => g.Key, g => g.Count());
+    }
+
+    private void MostrarListado()
+    {
+        mostrandoExistencias = false;
+    }
+}
